@@ -1,0 +1,123 @@
+{
+    "bot": {
+        "prefix": "!"
+    },
+    "roles": {
+        "captain_role_id": 1393203830791077918,
+        "streamer_role_id": 1369988078193872927,
+        "event_orga_role_id": 1401509580667748483
+    },
+	"additional_match_role_ids": [
+		1392183795083513907,
+		1369988225539772496,
+		1369989190455922759,
+		1369658384172847154
+    ],
+    "categories": {
+        "match_category_id": 1392980433561714700,
+		"public_matches_category_id": 1392978519017001052,
+        "archive_category_id": 1395078535336562718
+    },
+    "channels": {
+		"orga_channel_id": 1395077594751176897,
+		"streamer_channel_id": 1369970822378422282,
+		"streamer_notification_channel_id": 1395083937881260125,
+        "log_channel_id": null
+    },
+    "tournament": {
+        "name": "ONM - Omen No Mercy",
+        "current_week": 1,
+        "auto_advance_weeks": true
+    },
+    "rules": {
+        "onm_url": "https://docs.google.com/document/d/1RMBRaxT2kK67GOk43aJnj8gbicBS46QQm8UDQvtzYS0/edit?tab=t.0"
+    },
+	"team_icons": {
+        "US": "<:us_ico_dc_server:1401244788162039910>",
+        "GER": "<:ger_ico_dc_server:1401244746994942072>",
+        "BRI": "<:bri_ico_dc_server:1393539231972065301>",
+        "RUS": "<:rus_ico_dc_server:1401244771531362485>"
+    },
+    "teams": {
+		"Team1": {
+			"role_id": 1369988845952565369,
+			"display_name": "Team1",
+			"active": true
+		},
+		"Team2": {
+			"role_id": 1369988903003619395,
+			"display_name": "Team2", 
+			"active": true
+		},
+		"Team3": {
+			"role_id": 1369988904576614502,
+			"display_name": "Team3",
+			"active": true
+		},
+		"Team4": {
+			"role_id": 1392183227493384262,
+			"display_name": "Team4",
+			"active": true
+		},
+		"Team5": {
+			"role_id": 1392183269210194011,
+			"display_name": "Team5",
+			"active": true
+		},
+		"Team6": {
+			"role_id": 1392183272448196680,
+			"display_name": "Team6",
+			"active": true
+		},
+		"Team7": {
+			"role_id": 1392183273844637738,
+			"display_name": "Team7",
+			"active": true
+		},
+		"Team8": {
+			"role_id": 1392183273374875742,
+			"display_name": "Team8",
+			"active": true
+		},
+		"Team9": {
+			"role_id": 1392183274721378568,
+			"display_name": "Team9",
+			"active": true
+		},
+		"Team10": {
+			"role_id": 1392183448168562768,
+			"display_name": "Team10",
+			"active": true
+		},
+		"Team11": {
+			"role_id": 1392183448524820613,
+			"display_name": "Team11",
+			"active": true
+		},
+		"Team12": {
+			"role_id": 1392183449342836787,
+			"display_name": "Team12",
+			"active": true
+		},
+		"Team13": {
+			"role_id": 1392183450060193862,
+			"display_name": "Team13",
+			"active": true
+		},
+		"Team14": {
+			"role_id": 1392183451049922560,
+			"display_name": "Team14",
+			"active": true
+		},
+		"Team15": {
+			"role_id": 1392183451410497607,
+			"display_name": "Team15",
+			"active": true
+		},
+		"Team16": {
+			"role_id": 1392183452056555541,
+			"display_name": "Team16",
+			"active": true
+		}
+    }
+}

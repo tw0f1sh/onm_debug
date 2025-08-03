@@ -1,0 +1,40 @@
+{
+  "maps": [
+    {
+      "name": "Carentan",
+      "teams": ["US", "GER"]
+    },
+    {
+      "name": "Driel",
+      "teams": ["BRI", "GER"]
+    },
+    {
+      "name": "El Alamein",
+      "teams": ["BRI", "GER"]
+    },
+    {
+      "name": "Elsenborn Ridge",
+      "teams": ["US", "GER"]
+    },
+    {
+      "name": "Hill 400",
+      "teams": ["US", "GER"]
+    },
+    {
+      "name": "Mortain",
+      "teams": ["US", "GER"]
+    },
+    {
+      "name": "Sainte Marie du Mont",
+      "teams": ["US", "GER"]
+    },
+    {
+      "name": "Sainte Mere Eglise",
+      "teams": ["US", "GER"]
+    },
+    {
+      "name": "Tobruk",
+      "teams": ["BRI", "GER"]
+    }
+  ]
+}
