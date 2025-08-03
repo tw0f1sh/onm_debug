@@ -1,11 +1,12 @@
 """
-Streamer Embeds
+Streamer Embeds - WITH TIMEZONE SUPPORT
 """
 
 import discord
 import logging
 from typing import List
 from .config_helper import ConfigHelper
+from utils.timezone_helper import TimezoneHelper
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +30,18 @@ class StreamerEmbeds:
         
         formatted_date = ConfigHelper.format_date_to_display(match_data.get('match_date', 'TBA'))
         
+        # TIMEZONE SUPPORT: Match time mit Timezone formatieren
+        raw_match_time = match_data.get('match_time', 'TBA')
+        if raw_match_time and raw_match_time != 'TBA':
+            formatted_match_time = TimezoneHelper.format_time_with_timezone(raw_match_time, bot)
+        else:
+            formatted_match_time = 'TBA'
         
         team1_side_with_icon = ConfigHelper.format_team_side_with_icon(match_data['team1_side'], bot)
         team2_side_with_icon = ConfigHelper.format_team_side_with_icon(match_data['team2_side'], bot)
         
+        # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+        timezone_warning = TimezoneHelper.get_timezone_warning_text(bot)
         
         week = match_data.get('week', 'N/A')
         title = f"📺 Week {week} - Streamer wanted!"
@@ -44,7 +53,7 @@ class StreamerEmbeds:
         )
         
         embed.add_field(name="📅 Match Date", value=formatted_date, inline=True)
-        embed.add_field(name="🕒 Match Time", value=match_data.get('match_time', 'TBA'), inline=True)
+        embed.add_field(name="🕒 Match Time", value=formatted_match_time, inline=True)
         embed.add_field(name="🗺️ Map", value=match_data.get('map_name', 'TBA'), inline=True)
         
         
@@ -57,6 +66,9 @@ class StreamerEmbeds:
         
         
         embed.add_field(name="📖 Rules", value=f"[ONM]({ConfigHelper.get_rules_url(bot)})", inline=False)
+        
+        # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+        embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
         
         
         if streamers and len(streamers) > 0:
@@ -106,10 +118,18 @@ class StreamerEmbeds:
         
         formatted_date = ConfigHelper.format_date_to_display(match_data.get('match_date', 'TBA'))
         
+        # TIMEZONE SUPPORT: Match time mit Timezone formatieren
+        raw_match_time = match_data.get('match_time')
+        if raw_match_time and raw_match_time != 'TBA':
+            formatted_match_time = TimezoneHelper.format_time_with_timezone(raw_match_time, bot)
+        else:
+            formatted_match_time = "*TBA*"
         
         team1_side_with_icon = ConfigHelper.format_team_side_with_icon(match_data['team1_side'], bot)
         team2_side_with_icon = ConfigHelper.format_team_side_with_icon(match_data['team2_side'], bot)
         
+        # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+        timezone_warning = TimezoneHelper.get_timezone_warning_text(bot)
         
         week = match_data.get('week', 'N/A')
         title = f"🏆 Week {week}: {match_data['team1_name']} vs {match_data['team2_name']}"
@@ -119,7 +139,7 @@ class StreamerEmbeds:
             color=discord.Color.blue()
         )
         embed.add_field(name="📅 Match Date", value=formatted_date, inline=True)
-        embed.add_field(name="🕒 Match Time", value=match_data['match_time'] or "*TBA*", inline=True)
+        embed.add_field(name="🕒 Match Time", value=formatted_match_time, inline=True)
         embed.add_field(name="🗺️ Map", value=match_data['map_name'], inline=True)
         embed.add_field(
             name="🔴 Team Sides", 
@@ -127,6 +147,9 @@ class StreamerEmbeds:
             inline=False
         )
         embed.add_field(name="📖 Rules", value=f"[ONM]({ConfigHelper.get_rules_url(bot)})", inline=False)
+        
+        # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+        embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
         
         
         if streamers and len(streamers) > 0:
@@ -156,10 +179,18 @@ class StreamerEmbeds:
         
         formatted_date = ConfigHelper.format_date_to_display(match_data.get('match_date', 'TBA'))
         
+        # TIMEZONE SUPPORT: Match time mit Timezone formatieren
+        raw_match_time = match_data.get('match_time')
+        if raw_match_time and raw_match_time != 'TBA':
+            formatted_match_time = TimezoneHelper.format_time_with_timezone(raw_match_time, bot)
+        else:
+            formatted_match_time = "*TBA*"
         
         team1_side_with_icon = ConfigHelper.format_team_side_with_icon(match_data['team1_side'], bot)
         team2_side_with_icon = ConfigHelper.format_team_side_with_icon(match_data['team2_side'], bot)
         
+        # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+        timezone_warning = TimezoneHelper.get_timezone_warning_text(bot)
         
         week = match_data.get('week', 'N/A')
         title = f"🏆 Week {week}: {match_data['team1_name']} vs {match_data['team2_name']}"
@@ -169,7 +200,7 @@ class StreamerEmbeds:
             color=discord.Color.gold()
         )
         embed.add_field(name="📅 Match Date", value=formatted_date, inline=True)
-        embed.add_field(name="🕒 Match Time", value=match_data['match_time'] or "*TBA*", inline=True)
+        embed.add_field(name="🕒 Match Time", value=formatted_match_time, inline=True)
         embed.add_field(name="🗺️ Map", value=match_data['map_name'], inline=True)
         embed.add_field(
             name="🔴 Team Sides", 
@@ -177,6 +208,9 @@ class StreamerEmbeds:
             inline=False
         )
         embed.add_field(name="📖 Rules", value=f"[ONM]({ConfigHelper.get_rules_url(bot)})", inline=False)
+        
+        # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+        embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
         
         
         if streamers and len(streamers) > 0:

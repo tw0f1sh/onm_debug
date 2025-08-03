@@ -1,6 +1,6 @@
 # ui/match_interactions/server_offer_system.py
 """
-Server Offer System
+Server Offer System - WITH TIMEZONE SUPPORT
 """
 
 import discord
@@ -8,6 +8,7 @@ import logging
 import json
 from datetime import datetime, timedelta
 from typing import Dict, Any
+from utils.timezone_helper import TimezoneHelper
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,8 @@ class ServerOfferModal(discord.ui.Modal):
             
             await self._disable_server_offer_button_after_offer()
             
+            # TIMEZONE SUPPORT: Timezone-Info für Server Offer Embed
+            timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
             
             embed = discord.Embed(
                 title="🖥️ Server Offer",
@@ -68,7 +71,10 @@ class ServerOfferModal(discord.ui.Modal):
             embed.add_field(name="🏆 Match", value=f"{self.match_data['team1_name']} vs {self.match_data['team2_name']}", inline=False)
             embed.add_field(name="🖥️ Server Name", value=f"**{server_name}**", inline=True)
             embed.add_field(name="🔑 Password", value=f"`{server_password}`", inline=True)
-            embed.add_field(name="🗺️ Map", value=self.match_data.get('map_name', 'TBA'), inline=True)            
+            embed.add_field(name="🗺️ Map", value=self.match_data.get('map_name', 'TBA'), inline=True)
+            
+            # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+            embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
             
             view = ServerOfferView(self.bot, self.match_id, self.match_data, server_name, server_password, offering_team_name, other_team_name, other_team_role_id)
             
@@ -152,10 +158,10 @@ class ServerOfferModal(discord.ui.Modal):
             if self.supersede_view:
                 await self._disable_superseded_view()
             
-            logger.info(f"✅ Server offer '{server_name}' from {offering_team_name} for match {self.match_id}")
+            logger.info(f"✅ TIMEZONE: Server offer '{server_name}' from {offering_team_name} for match {self.match_id} WITH TIMEZONE SUPPORT")
             
         except Exception as e:
-            logger.error(f"Error in server offer submission: {e}")
+            logger.error(f"Error in server offer submission with TIMEZONE support: {e}")
             try:
                 if not interaction.response.is_done():
                     await interaction.response.send_message("❌ Error processing server offer!", ephemeral=True)
@@ -444,6 +450,8 @@ class ServerOfferView(discord.ui.View):
             import json
             self.bot.db.set_setting(f'match_{self.match_id}_server', json.dumps(server_data))
             
+            # TIMEZONE SUPPORT: Timezone-Info für Server Accept Embed
+            timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
             
             embed = discord.Embed(
                 title="✅ Server Accepted!",
@@ -454,6 +462,10 @@ class ServerOfferView(discord.ui.View):
             embed.add_field(name="🖥️ Server Name", value=self.server_name, inline=True)
             embed.add_field(name="🔑 Password", value=f"`{self.server_password}`", inline=True)
             embed.add_field(name="🗺️ Map", value=self.match_data.get('map_name', 'TBA'), inline=True)
+            
+            # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+            embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
+            
             embed.set_footer(text="Server accepted")
             
             
@@ -475,10 +487,10 @@ class ServerOfferView(discord.ui.View):
             if message:
                 self.bot.db.complete_ongoing_interaction(message.id)
             
-            logger.info(f"✅ Server '{self.server_name}' accepted for match {self.match_id} - FIXED DM sent to streamer with REAL team name: {self.offering_team}")
+            logger.info(f"✅ TIMEZONE: Server '{self.server_name}' accepted for match {self.match_id} - FIXED DM sent to streamer with REAL team name: {self.offering_team}")
             
         except Exception as e:
-            logger.error(f"Error accepting server with FIXED DM to streamer: {e}")
+            logger.error(f"Error accepting server with TIMEZONE support: {e}")
             try:
                 if not interaction.response.is_done():
                     await interaction.response.send_message("❌ Error accepting server!", ephemeral=True)
@@ -589,9 +601,17 @@ class ServerOfferView(discord.ui.View):
             else:
                 formatted_date = current_match_date or 'TBA'
             
+            # TIMEZONE SUPPORT: Zeit mit Timezone formatieren für DM
+            if current_match_time and current_match_time != 'TBA':
+                formatted_time = TimezoneHelper.format_time_with_timezone(current_match_time, self.bot)
+            else:
+                formatted_time = 'TBA'
+            
             
             real_offering_team = self.offering_team  
             
+            # TIMEZONE SUPPORT: Timezone-Info für DM
+            timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
             
             dm_embed = discord.Embed(
                 title="🖥️ Server Details - Match Reminder",
@@ -603,7 +623,7 @@ class ServerOfferView(discord.ui.View):
                 name="📊 Match Info",
                 value=f"**{team1_name} vs {team2_name}**\n"
                       f"📅 Date: {formatted_date}\n"
-                      f"🕒 Time: {current_match_time or 'TBA'}\n"  
+                      f"🕒 Time: {formatted_time}\n"
                       f"🗺️ Map: {current_map_name or 'TBA'}",
                 inline=False
             )
@@ -629,6 +649,9 @@ class ServerOfferView(discord.ui.View):
                     inline=False
                 )
             
+            # TIMEZONE SUPPORT: Timezone-Info in DM
+            dm_embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
+            
             dm_embed.add_field(
                 name="ℹ️ Important",
                 value="• Save these server details for the match\n"
@@ -642,7 +665,7 @@ class ServerOfferView(discord.ui.View):
             
             try:
                 await streamer_user.send(embed=dm_embed)
-                logger.info(f"✅ FIXED Server details DM sent to streamer {streamer_user} for match {self.match_id} - Time: {current_match_time}, Team: {real_offering_team}")
+                logger.info(f"✅ TIMEZONE: Server details DM sent to streamer {streamer_user} for match {self.match_id} - Time: {formatted_time}, Team: {real_offering_team}")
                 
                 
                 try:
@@ -661,7 +684,7 @@ class ServerOfferView(discord.ui.View):
                             )
                             confirmation_embed.add_field(
                                 name="📊 Sent Details",
-                                value=f"Time: {current_match_time or 'TBA'}\nProvided by: {real_offering_team}",  
+                                value=f"Time: {formatted_time}\nProvided by: {real_offering_team}",
                                 inline=False
                             )
                             await private_channel.send(embed=confirmation_embed)
@@ -687,19 +710,19 @@ class ServerOfferView(discord.ui.View):
                             )
                             fallback_embed.add_field(
                                 name="🖥️ Server Details",
-                                value=f"**Server:** {self.server_name}\n**Password:** `{self.server_password}`\n**Time:** {current_match_time or 'TBA'}\n**Provided by:** {real_offering_team}",  
+                                value=f"**Server:** {self.server_name}\n**Password:** `{self.server_password}`\n**Time:** {formatted_time}\n**Provided by:** {real_offering_team}",
                                 inline=False
                             )
                             await private_channel.send(embed=fallback_embed)
-                            logger.info(f"📢 FIXED Server details shared in private channel as DM fallback for match {self.match_id}")
+                            logger.info(f"📢 TIMEZONE: Server details shared in private channel as DM fallback for match {self.match_id}")
                 except Exception as fallback_error:
                     logger.error(f"Could not send DM fallback notification: {fallback_error}")
             
             except Exception as dm_error:
-                logger.error(f"Error sending FIXED server DM to streamer: {dm_error}")
+                logger.error(f"Error sending TIMEZONE server DM to streamer: {dm_error}")
                 
         except Exception as e:
-            logger.error(f"Error in _send_server_dm_to_streamer_fixed: {e}")
+            logger.error(f"Error in _send_server_dm_to_streamer_fixed with TIMEZONE support: {e}")
     
     async def _add_only_server_field_to_private_embed_with_real_team(self):
         
@@ -833,6 +856,9 @@ class ServerOfferView(discord.ui.View):
                 team2_role = interaction.guild.get_role(team2_role_id)
                 
                 if team1_role and team2_role:
+                    # TIMEZONE SUPPORT: Timezone-Info für Team Confirmation
+                    timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
+                    
                     confirmation_embed = discord.Embed(
                         title="✅ Server Confirmed!",
                         description=f"Both teams have agreed on the server provided by **{self.offering_team}**",  
@@ -841,6 +867,9 @@ class ServerOfferView(discord.ui.View):
                     confirmation_embed.add_field(name="🖥️ Server Name", value=self.server_name, inline=True)
                     confirmation_embed.add_field(name="🔑 Password", value=f"`{self.server_password}`", inline=True)
                     confirmation_embed.add_field(name="🗺️ Map", value=self.match_data.get('map_name', 'TBA'), inline=True)
+                    
+                    # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+                    confirmation_embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
                     
                     await interaction.followup.send(
                         f"🖥️ {team1_role.mention} {team2_role.mention} **Server confirmed!**", 
@@ -926,6 +955,8 @@ class ServerOfferView(discord.ui.View):
             for item in self.children:
                 item.disabled = True
             
+            # TIMEZONE SUPPORT: Timezone-Info für Timeout-Message
+            timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
             
             embed = discord.Embed(
                 title="⏰ Server Offer Expired",
@@ -935,6 +966,9 @@ class ServerOfferView(discord.ui.View):
             embed.add_field(name="🖥️ Expired Offer", value=self.server_name, inline=True)
             embed.add_field(name="👥 Offered by", value=self.offering_team, inline=True)  
             embed.add_field(name="ℹ️ Status", value="Expired - can be resubmitted", inline=True)
+            
+            # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+            embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
             
             message = await self._get_message_from_stored_ids()
             if message:
