@@ -11,6 +11,7 @@ from utils.lazy_persistence_service import LazyPersistenceService
 from utils.fast_startup_persistence import FastStartupPersistence
 from utils.team_config_loader import TeamConfigLoader
 from utils.public_channel_status_manager import PublicChannelStatusManager
+from utils.timezone_helper import TimezoneHelper
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +206,9 @@ class TournamentBot(commands.Bot):
                         reason=f"Match {match_id} abgeschlossen"
                     )
                     
+                    # TIMEZONE SUPPORT: Timezone-Info in Archive-Message
+                    timezone_warning = TimezoneHelper.get_timezone_warning_text(self)
+                    
                     # Archiv-Nachricht senden
                     if result_data:
                         archive_embed = discord.Embed(
@@ -217,6 +221,7 @@ class TournamentBot(commands.Bot):
                             value=f"**{result_data['winner']}** wins {result_data['score']}", 
                             inline=False
                         )
+                        archive_embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
                         archive_embed.set_footer(text=f"Match ID: {match_id}")
                         
                         await channel.send(embed=archive_embed)
@@ -254,12 +259,22 @@ class TournamentBot(commands.Bot):
                 team1_side_with_icon = self._format_team_side_with_icon(match_data['team1_side'])
                 team2_side_with_icon = self._format_team_side_with_icon(match_data['team2_side'])
                 
+                # TIMEZONE SUPPORT: Zeit mit Timezone formatieren für Fallback-Embed
+                raw_match_time = match_data.get('match_time', '*TBA*')
+                if raw_match_time and raw_match_time != '*TBA*':
+                    formatted_time = TimezoneHelper.format_time_with_timezone(raw_match_time, self)
+                else:
+                    formatted_time = '*TBA*'
+                
+                # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+                timezone_warning = TimezoneHelper.get_timezone_warning_text(self)
+                
                 embed = discord.Embed(
                     title=f"🏆 Week {match_data.get('week', 'N/A')}: {match_data['team1_name']} vs {match_data['team2_name']}",
                     color=discord.Color.gold()
                 )
                 embed.add_field(name="📅 Match Date", value=formatted_date, inline=True)
-                embed.add_field(name="🕒 Match Time", value=match_data.get('match_time', '*TBA*'), inline=True)
+                embed.add_field(name="🕒 Match Time", value=formatted_time, inline=True)
                 embed.add_field(name="🗺️ Map", value=match_data.get('map_name', 'TBA'), inline=True)
                 embed.add_field(
                     name="🔴 Team Sides", 
@@ -270,6 +285,7 @@ class TournamentBot(commands.Bot):
                 
                 rules_url = self.config.get('rules', {}).get('onm_url', '#')
                 embed.add_field(name="📖 Rules", value=f"[ONM]({rules_url})", inline=False)
+                embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
                 embed.add_field(name="ℹ️ Status", value="Waiting for match time coordination", inline=False)
                 embed.set_footer(text=f"Match ID: {match_id}")
             
@@ -315,6 +331,11 @@ class TournamentBot(commands.Bot):
         logger.info(f'{self.user} ist online!')
         logger.info(f'Tournament: {self.TOURNAMENT_NAME}')
         logger.info(f'Aktuelle Woche: {self.CURRENT_WEEK}')
+        
+        # TIMEZONE SUPPORT: Timezone-Info beim Startup loggen
+        timezone_display = TimezoneHelper.get_timezone_display(self)
+        timezone_info = TimezoneHelper.get_timezone_info(self)
+        logger.info(f'Timezone: {timezone_display} - {timezone_info}')
         
         self._check_configuration()
         self._validate_teams_configuration()

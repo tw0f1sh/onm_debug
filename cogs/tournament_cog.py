@@ -1,5 +1,5 @@
 """
-Enhanced Tournament Cog
+Enhanced Tournament Cog - WITH TIMEZONE SUPPORT
 Speichere als: cogs/tournament_cog.py
 """
 
@@ -9,6 +9,7 @@ import json
 import logging
 from datetime import datetime
 from utils.embed_builder import EmbedBuilder
+from utils.timezone_helper import TimezoneHelper
 
 logger = logging.getLogger(__name__)
 
@@ -94,12 +95,22 @@ class TournamentCog(commands.Cog):
             team1_side_with_icon = self._format_team_side_with_icon(match_data.get('team1_side', 'TBA'))
             team2_side_with_icon = self._format_team_side_with_icon(match_data.get('team2_side', 'TBA'))
             
+            # TIMEZONE SUPPORT: Zeit mit Timezone formatieren
+            raw_match_time = match_data.get('match_time', '*TBA*')
+            if raw_match_time and raw_match_time != '*TBA*':
+                formatted_time = TimezoneHelper.format_time_with_timezone(raw_match_time, self.bot)
+            else:
+                formatted_time = '*TBA*'
+            
+            # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+            timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
+            
             embed = discord.Embed(
                 title=f"🏆 Week {match_data.get('week', 'N/A')}: {match_data['team1_name']} vs {match_data['team2_name']}",
                 color=discord.Color.gold()
             )
             embed.add_field(name="📅 Match Date", value=formatted_date, inline=True)
-            embed.add_field(name="🕒 Match Time", value=match_data.get('match_time', '*TBA*'), inline=True)
+            embed.add_field(name="🕒 Match Time", value=formatted_time, inline=True)
             embed.add_field(name="🗺️ Map", value=match_data.get('map_name', 'TBA'), inline=True)
             
             embed.add_field(
@@ -111,13 +122,18 @@ class TournamentCog(commands.Cog):
             rules_url = self.bot.config.get('rules', {}).get('onm_url', '#')
             embed.add_field(name="📖 Rules", value=f"[ONM]({rules_url})", inline=False)
             
+            # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+            embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
+            
             status = match_data.get('status', 'pending')
             if status == 'confirmed':
                 embed.add_field(name="ℹ️ Status", value="✅ Match completed and confirmed", inline=False)
             elif status == 'completed':
                 embed.add_field(name="ℹ️ Status", value="⏳ Teams agreed - Awaiting Event Orga confirmation", inline=False)
             elif match_data.get('match_time'):
-                embed.add_field(name="ℹ️ Status", value=f"⏳ Scheduled for {match_data['match_time']} - Waiting for results", inline=False)
+                # TIMEZONE SUPPORT: Zeit im Status mit Timezone
+                status_time = TimezoneHelper.format_time_with_timezone(match_data['match_time'], self.bot)
+                embed.add_field(name="ℹ️ Status", value=f"⏳ Scheduled for {status_time} - Waiting for results", inline=False)
             else:
                 embed.add_field(name="ℹ️ Status", value="Waiting for match time coordination", inline=False)
             
@@ -150,6 +166,7 @@ class TournamentCog(commands.Cog):
         if not date_str or date_str == 'TBA':
             return "TBA"
         try:
+            from datetime import datetime
             date_obj = datetime.strptime(date_str, '%Y-%m-%d')
             return date_obj.strftime('%d.%m.%Y')
         except:

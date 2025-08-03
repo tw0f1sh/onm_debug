@@ -1,6 +1,6 @@
 # ui/streamer_management/stream_url_modal.py
 """
-ENHANCED: Stream URL Modal
+ENHANCED: Stream URL Modal - WITH TIMEZONE SUPPORT
 """
 
 import discord
@@ -8,6 +8,7 @@ import logging
 import json
 from typing import Dict
 from datetime import datetime
+from utils.timezone_helper import TimezoneHelper
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +140,9 @@ class StreamURLModal(discord.ui.Modal):
             
             team_side_name = self._get_real_team_side_name(self.team_side)
             
+            # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+            timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
+            
             
             embed = discord.Embed(
                 title="✅ Streamer Registration Successful!",
@@ -162,11 +166,21 @@ class StreamURLModal(discord.ui.Modal):
             else:
                 formatted_date = match_date
             
+            # TIMEZONE SUPPORT: Zeit mit Timezone formatieren
+            raw_match_time = self.match_data.get('match_time', 'TBA')
+            if raw_match_time and raw_match_time != 'TBA':
+                formatted_time = TimezoneHelper.format_time_with_timezone(raw_match_time, self.bot)
+            else:
+                formatted_time = 'TBA'
+            
             embed.add_field(name="📅 Date", value=formatted_date, inline=True)
-            embed.add_field(name="🕒 Time", value=self.match_data.get('match_time', 'TBA'), inline=True)
+            embed.add_field(name="🕒 Time", value=formatted_time, inline=True)
             embed.add_field(name="🗺️ Map", value=self.match_data.get('map_name', 'TBA'), inline=True)
             embed.add_field(name="📺 Stream URL", value=stream_url, inline=False)
             embed.add_field(name="🎮 SteamID64", value=f"`{steam_id64}`", inline=False)
+            
+            # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+            embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
@@ -266,6 +280,15 @@ class StreamURLModal(discord.ui.Modal):
             else:
                 formatted_date = current_match_date or 'TBA'
             
+            # TIMEZONE SUPPORT: Zeit mit Timezone formatieren für DM
+            if current_match_time and current_match_time != 'TBA':
+                formatted_time = TimezoneHelper.format_time_with_timezone(current_match_time, self.bot)
+            else:
+                formatted_time = 'TBA'
+            
+            # TIMEZONE SUPPORT: Timezone-Info für DM
+            timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
+            
             
             dm_embed = discord.Embed(
                 title="🖥️ Server Details Available - Match Reminder",
@@ -277,7 +300,7 @@ class StreamURLModal(discord.ui.Modal):
                 name="📊 Match Info",
                 value=f"**{team1_name} vs {team2_name}**\n"
                       f"📅 Date: {formatted_date}\n"
-                      f"🕒 Time: {current_match_time or 'TBA'}\n"
+                      f"🕒 Time: {formatted_time}\n"
                       f"🗺️ Map: {current_map_name or 'TBA'}",
                 inline=False
             )
@@ -303,6 +326,9 @@ class StreamURLModal(discord.ui.Modal):
                     inline=False
                 )
             
+            # TIMEZONE SUPPORT: Timezone-Info in DM
+            dm_embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
+            
             dm_embed.add_field(
                 name="ℹ️ Important",
                 value="• Save these server details for the match\n"
@@ -316,7 +342,7 @@ class StreamURLModal(discord.ui.Modal):
             
             try:
                 await streamer_user.send(embed=dm_embed)
-                logger.info(f"✅ EXISTING server details DM sent to new streamer {streamer_user} for match {self.match_id}")
+                logger.info(f"✅ TIMEZONE: EXISTING server details DM sent to new streamer {streamer_user} for match {self.match_id}")
                 
                 
                 try:
@@ -328,6 +354,7 @@ class StreamURLModal(discord.ui.Modal):
                     if result and result[0]:
                         private_channel = self.bot.get_channel(result[0])
                         if private_channel:
+                            # TIMEZONE SUPPORT: Zeit in Confirmation-Message
                             confirmation_embed = discord.Embed(
                                 title="📧 Streamer Notified (Existing Server)",
                                 description=f"Existing server details have been sent via DM to the newly registered streamer: {streamer_user.mention}",
@@ -335,7 +362,7 @@ class StreamURLModal(discord.ui.Modal):
                             )
                             confirmation_embed.add_field(
                                 name="📊 Sent Details",
-                                value=f"Server: {server_name}\nTime: {current_match_time or 'TBA'}\nProvided by: {offering_team}",
+                                value=f"Server: {server_name}\nTime: {formatted_time}\nProvided by: {offering_team}",
                                 inline=False
                             )
                             await private_channel.send(embed=confirmation_embed)
@@ -355,6 +382,7 @@ class StreamURLModal(discord.ui.Modal):
                     if result and result[0]:
                         private_channel = self.bot.get_channel(result[0])
                         if private_channel:
+                            # TIMEZONE SUPPORT: Zeit in Fallback-Message
                             fallback_embed = discord.Embed(
                                 title="⚠️ Streamer DM Failed (Existing Server)",
                                 description=f"{streamer_user.mention} Could not send existing server details via DM (DMs disabled). Please share server details manually:",
@@ -362,11 +390,11 @@ class StreamURLModal(discord.ui.Modal):
                             )
                             fallback_embed.add_field(
                                 name="🖥️ Server Details",
-                                value=f"**Server:** {server_name}\n**Password:** `{server_password}`\n**Time:** {current_match_time or 'TBA'}\n**Provided by:** {offering_team}",
+                                value=f"**Server:** {server_name}\n**Password:** `{server_password}`\n**Time:** {formatted_time}\n**Provided by:** {offering_team}",
                                 inline=False
                             )
                             await private_channel.send(embed=fallback_embed)
-                            logger.info(f"📢 Existing server details shared in private channel as DM fallback for match {self.match_id}")
+                            logger.info(f"📢 TIMEZONE: Existing server details shared in private channel as DM fallback for match {self.match_id}")
                             
                 except Exception as fallback_error:
                     logger.error(f"Could not send existing server DM fallback notification: {fallback_error}")
