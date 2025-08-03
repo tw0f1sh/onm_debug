@@ -1,6 +1,7 @@
 # ui/match_interactions/orga_edit_system.py
 """
 Enhanced Orga Edit System - ERWEITERT mit Result Edit und vollständigen Embed Updates
+WITH TIMEZONE SUPPORT
 """
 
 import discord
@@ -10,13 +11,17 @@ import random
 import asyncio
 from datetime import datetime
 from typing import Dict, Any
+from utils.timezone_helper import TimezoneHelper
 
 logger = logging.getLogger(__name__)
 
 class OrgaEditModal(discord.ui.Modal):
     
     def __init__(self, bot, match_id: int, match_data: Dict[str, Any], current_details: Dict[str, Any]):
-        super().__init__(title="⚙️ Orga Edit Match", timeout=300)
+        # TIMEZONE SUPPORT: Dynamischer Titel mit Timezone
+        timezone_display = TimezoneHelper.get_timezone_display(bot)
+        super().__init__(title=f"⚙️ Orga Edit Match ({timezone_display})", timeout=300)
+        
         self.bot = bot
         self.match_id = match_id
         self.match_data = match_data
@@ -41,9 +46,13 @@ class OrgaEditModal(discord.ui.Modal):
             required=True
         )
         
+        # TIMEZONE SUPPORT: Zeit-Label mit Timezone
+        time_label = TimezoneHelper.get_time_input_label(bot)
+        time_placeholder = TimezoneHelper.get_time_input_placeholder(bot)
+        
         self.match_time = discord.ui.TextInput(
-            label="Match Time (HH:MM)",
-            placeholder="20:30",
+            label=time_label,
+            placeholder=time_placeholder,
             default=current_time or '',
             max_length=5,
             required=False
@@ -74,10 +83,15 @@ class OrgaEditModal(discord.ui.Modal):
             time_str = self.match_time.value.strip() if self.match_time.value else None
             map_name = self.map_name.value.strip()
             
+            # TIMEZONE SUPPORT: Zeit-Validierung mit Timezone-Info
             if time_str:
-                import re
-                if not re.match(r'^([01]?[0-9]|2[0-3]):[0-5][0-9]$', time_str):
-                    await interaction.response.send_message("❌ Invalid time format! Use HH:MM (e.g. 20:30)", ephemeral=True)
+                if not TimezoneHelper.validate_time_format(time_str):
+                    timezone_info = TimezoneHelper.get_timezone_info(self.bot)
+                    await interaction.response.send_message(
+                        f"❌ Invalid time format! Please use HH:MM format.\n"
+                        f"⏰ {timezone_info}", 
+                        ephemeral=True
+                    )
                     return
             
             cursor = self.bot.db.conn.cursor()
@@ -90,6 +104,9 @@ class OrgaEditModal(discord.ui.Modal):
             
             self.bot.db.conn.commit()
             
+            # TIMEZONE SUPPORT: Zeit mit Timezone formatieren für Bestätigung
+            formatted_time = TimezoneHelper.format_time_with_timezone(time_str, self.bot) if time_str else "TBA"
+            
             embed = discord.Embed(
                 title="✅ Match Updated by Event Orga!",
                 description=f"Match details have been updated:",
@@ -97,7 +114,7 @@ class OrgaEditModal(discord.ui.Modal):
             )
             embed.add_field(name="🏆 Match", value=f"{self.match_data['team1_name']} vs {self.match_data['team2_name']}", inline=False)
             embed.add_field(name="📅 Date", value=date_input, inline=True)
-            embed.add_field(name="🕒 Time", value=time_str or "TBA", inline=True)
+            embed.add_field(name="🕒 Time", value=formatted_time, inline=True)
             embed.add_field(name="🗺️ Map", value=map_name, inline=True)
             embed.add_field(name="👤 Updated by", value=interaction.user.mention, inline=False)
             
@@ -172,14 +189,19 @@ class OrgaEditModal(discord.ui.Modal):
                     if (embed.footer and 
                         f"Match ID: {self.match_id}" in embed.footer.text):
                         
-                        # Embed-Felder aktualisieren
+                        # Embed-Felder aktualisieren mit Timezone-Support
                         formatted_date = self._format_date_display(match_details[3])
+                        
+                        # TIMEZONE SUPPORT: Zeit mit Timezone formatieren
+                        formatted_time = TimezoneHelper.format_time_with_timezone(
+                            match_details[4], self.bot
+                        ) if match_details[4] else '*TBA*'
                         
                         for i, field in enumerate(embed.fields):
                             if "Match Date" in field.name or "📅" in field.name:
                                 embed.set_field_at(i, name=field.name, value=formatted_date, inline=field.inline)
                             elif "Match Time" in field.name or "🕒" in field.name:
-                                embed.set_field_at(i, name=field.name, value=match_details[4] or '*TBA*', inline=field.inline)
+                                embed.set_field_at(i, name=field.name, value=formatted_time, inline=field.inline)
                             elif "Map" in field.name or "🗺️" in field.name:
                                 embed.set_field_at(i, name=field.name, value=match_details[5], inline=field.inline)
                         
@@ -234,11 +256,16 @@ class OrgaEditModal(discord.ui.Modal):
                     embed = message.embeds[0]
                     formatted_date = self._format_date_display(match_details[3])
                     
+                    # TIMEZONE SUPPORT: Zeit mit Timezone formatieren
+                    formatted_time = TimezoneHelper.format_time_with_timezone(
+                        match_details[4], self.bot
+                    ) if match_details[4] else "*TBA*"
+                    
                     for i, field in enumerate(embed.fields):
                         if "Match Date" in field.name or "📅" in field.name:
                             embed.set_field_at(i, name=field.name, value=formatted_date, inline=field.inline)
                         elif "Match Time" in field.name or "🕒" in field.name:
-                            embed.set_field_at(i, name=field.name, value=match_details[4] or "*TBA*", inline=field.inline)
+                            embed.set_field_at(i, name=field.name, value=formatted_time, inline=field.inline)
                         elif "Map" in field.name or "🗺️" in field.name:
                             embed.set_field_at(i, name=field.name, value=match_details[5], inline=field.inline)
                     
@@ -272,11 +299,16 @@ class OrgaEditModal(discord.ui.Modal):
                             embed = message.embeds[0]
                             formatted_date = self._format_date_display(match_details[3])
                             
+                            # TIMEZONE SUPPORT: Zeit mit Timezone formatieren
+                            formatted_time = TimezoneHelper.format_time_with_timezone(
+                                match_details[4], self.bot
+                            ) if match_details[4] else "TBA"
+                            
                             for i, field in enumerate(embed.fields):
                                 if "Match Date" in field.name or "📅" in field.name:
                                     embed.set_field_at(i, name=field.name, value=formatted_date, inline=field.inline)
                                 elif "Match Time" in field.name or "🕒" in field.name:
-                                    embed.set_field_at(i, name=field.name, value=match_details[4] or "TBA", inline=field.inline)
+                                    embed.set_field_at(i, name=field.name, value=formatted_time, inline=field.inline)
                                 elif "Map" in field.name or "🗺️" in field.name:
                                     embed.set_field_at(i, name=field.name, value=match_details[5], inline=field.inline)
                             

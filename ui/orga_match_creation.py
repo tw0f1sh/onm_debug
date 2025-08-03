@@ -1,5 +1,6 @@
 """
 Enhanced Orga Match Creation - Updated für separate Public Match Channels
+WITH TIMEZONE SUPPORT
 Speichere als: ui/orga_match_creation.py
 """
 
@@ -7,6 +8,7 @@ import discord
 import logging
 from datetime import datetime
 from typing import List, Tuple
+from utils.timezone_helper import TimezoneHelper
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +31,10 @@ class MatchCreationHandler:
 
 class MatchCreationModal(discord.ui.Modal):
     def __init__(self, bot, teams: List[Tuple]):
-        super().__init__(title="🆕 Neues Match erstellen", timeout=300)
+        # TIMEZONE SUPPORT: Dynamischer Titel mit Timezone
+        timezone_display = TimezoneHelper.get_timezone_display(bot)
+        super().__init__(title=f"🆕 Neues Match erstellen ({timezone_display})", timeout=300)
+        
         self.bot = bot
         self.teams = teams
         
@@ -78,6 +83,10 @@ class MatchCreationModal(discord.ui.Modal):
                 return
             
             view = TeamSelectionView(self.bot, self.team_options, date_str, week, prefix)
+            
+            # TIMEZONE SUPPORT: Timezone-Info im Match Creation Embed
+            timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
+            
             embed = discord.Embed(
                 title="👥 Team Auswahl",
                 description="Wähle die beiden Teams für das Match:\n\n🎲 **Map und Team-Seiten werden automatisch per Wheel ausgewählt!**",
@@ -93,6 +102,9 @@ class MatchCreationModal(discord.ui.Modal):
             
             team_names = [team[0] for team in self.team_options]
             embed.add_field(name="🏆 Available Teams", value=f"{len(team_names)} teams: {', '.join(team_names[:5])}" + ("..." if len(team_names) > 5 else ""), inline=False)
+            
+            # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+            embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
             
             await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
             
@@ -177,7 +189,9 @@ class TeamSelectionView(discord.ui.View):
                 )
                 return
             
-            await interaction.response.send_message("🎲 Spinning wheels for map and team sides...", ephemeral=True)
+            # TIMEZONE SUPPORT: Wheel spinning message mit Timezone
+            timezone_info = TimezoneHelper.get_timezone_info(self.bot)
+            await interaction.response.send_message(f"🎲 Spinning wheels for map and team sides...\n⏰ {timezone_info}", ephemeral=True)
             
             from wheel.match_wheel_service import MatchWheelService
             
@@ -237,6 +251,9 @@ class TeamSelectionView(discord.ui.View):
             team1_side_with_icon = self._format_team_side_with_icon(team1_side)
             team2_side_with_icon = self._format_team_side_with_icon(team2_side)
             
+            # TIMEZONE SUPPORT: Timezone-Info im Success Embed
+            timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
+            
             embed = discord.Embed(
                 title="✅ Match erfolgreich erstellt!",
                 description=f"**{team1_data[1]}** vs **{team2_data[1]}**",
@@ -258,6 +275,9 @@ class TeamSelectionView(discord.ui.View):
                     public_channel = interaction.guild.get_channel(int(public_channel_id))
                     if public_channel:
                         embed.add_field(name="🌐 Public Channel", value=public_channel.mention, inline=False)
+            
+            # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+            embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
             
             await interaction.followup.send(embed=embed, ephemeral=True)
             
