@@ -1,11 +1,12 @@
 # utils/public_embed_updater.py
 """
-Public Embed Update System - Wiederherstellung der automatischen Updates
+Public Embed Update System - WITH TIMEZONE SUPPORT
 """
 
 import discord
 import logging
 from typing import Dict, Any, Optional
+from utils.timezone_helper import TimezoneHelper
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +98,7 @@ class PublicEmbedUpdater:
     
     async def _update_public_embed_with_current_data(self, message: discord.Message, match_details: tuple, streamers: list, update_type: str):
         """
-        Aktualisiert das Public Embed mit aktuellen Daten
+        Aktualisiert das Public Embed mit aktuellen Daten - WITH TIMEZONE SUPPORT
         """
         try:
             if not message.embeds:
@@ -108,14 +109,25 @@ class PublicEmbedUpdater:
             # Grundlegende Match-Daten aktualisieren
             formatted_date = self._format_date_display(match_details[3])
             
+            # TIMEZONE SUPPORT: Zeit mit Timezone formatieren
+            raw_match_time = match_details[4]
+            if raw_match_time and raw_match_time != "*TBA*":
+                formatted_match_time = TimezoneHelper.format_time_with_timezone(raw_match_time, self.bot)
+            else:
+                formatted_match_time = "*TBA*"
+            
             # Felder aktualisieren
             for i, field in enumerate(embed.fields):
                 if "Match Date" in field.name or "📅" in field.name:
                     embed.set_field_at(i, name=field.name, value=formatted_date, inline=field.inline)
                 elif "Match Time" in field.name or "🕒" in field.name:
-                    embed.set_field_at(i, name=field.name, value=match_details[4] or "*TBA*", inline=field.inline)
+                    embed.set_field_at(i, name=field.name, value=formatted_match_time, inline=field.inline)
                 elif "Map" in field.name or "🗺️" in field.name:
                     embed.set_field_at(i, name=field.name, value=match_details[5], inline=field.inline)
+                # TIMEZONE SUPPORT: Timezone-Info Feld aktualisieren
+                elif "Timezone Info" in field.name or "⏰" in field.name:
+                    timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
+                    embed.set_field_at(i, name=field.name, value=timezone_warning, inline=field.inline)
             
             # Streamer-Informationen aktualisieren
             await self._update_streamer_field_in_public_embed(embed, streamers, match_details)
