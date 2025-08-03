@@ -2,6 +2,11 @@
     "bot": {
         "prefix": "!"
     },
+	"server": {
+        "timezone": "CET",
+        "timezone_display": "CET (UTC+1)",
+        "timezone_info": "All times are in Central European Time"
+    },
     "roles": {
         "captain_role_id": 1393203830791077918,
         "streamer_role_id": 1369988078193872927,

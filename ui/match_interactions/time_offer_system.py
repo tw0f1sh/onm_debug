@@ -1,5 +1,5 @@
 """
-Enhanced Time Offer System
+Enhanced Time Offer System - WITH TIMEZONE SUPPORT
 Speichere als: ui/match_interactions/time_offer_system.py
 """
 
@@ -9,6 +9,7 @@ import re
 import json
 from datetime import datetime, timedelta
 from typing import Dict, Any
+from utils.timezone_helper import TimezoneHelper
 
 logger = logging.getLogger(__name__)
 
@@ -16,15 +17,22 @@ class TimeOfferModal(discord.ui.Modal):
     
     
     def __init__(self, bot, match_id: int, match_data: Dict[str, Any], supersede_view=None):
-        super().__init__(title="🕒 Offer Match Time", timeout=300)
+        # TIMEZONE SUPPORT: Dynamischer Titel mit Timezone
+        timezone_display = TimezoneHelper.get_timezone_display(bot)
+        super().__init__(title=f"🕒 Offer Match Time ({timezone_display})", timeout=300)
+        
         self.bot = bot
         self.match_id = match_id
         self.match_data = match_data
         self.supersede_view = supersede_view
         
+        # TIMEZONE SUPPORT: Label und Placeholder mit Timezone-Info
+        time_label = TimezoneHelper.get_time_input_label(bot)
+        time_placeholder = TimezoneHelper.get_time_input_placeholder(bot)
+        
         self.time_input = discord.ui.TextInput(
-            label="Match Time (HH:MM)",
-            placeholder="20:30",
+            label=time_label,
+            placeholder=time_placeholder,
             max_length=5,
             required=True
         )
@@ -36,9 +44,14 @@ class TimeOfferModal(discord.ui.Modal):
         try:
             time_str = self.time_input.value.strip()
             
-            
-            if not re.match(r'^([01]?[0-9]|2[0-3]):[0-5][0-9]$', time_str):
-                await interaction.response.send_message("❌ Invalid time format! Please use HH:MM (e.g., 20:30)", ephemeral=True)
+            # TIMEZONE SUPPORT: Erweiterte Validierung mit Timezone-Info
+            if not TimezoneHelper.validate_time_format(time_str):
+                timezone_info = TimezoneHelper.get_timezone_info(self.bot)
+                await interaction.response.send_message(
+                    f"❌ Invalid time format! Please use HH:MM format.\n"
+                    f"⏰ {timezone_info}", 
+                    ephemeral=True
+                )
                 return
             
             
@@ -49,11 +62,14 @@ class TimeOfferModal(discord.ui.Modal):
             
             offering_team_name, other_team_name, other_team_role_id = user_team_info
             
-            logger.info(f"✅ FIXED Time offer: {offering_team_name} offers time {time_str} to {other_team_name}")
+            logger.info(f"✅ TIMEZONE: Time offer {time_str} from {offering_team_name} to {other_team_name}")
             
             
             await self._disable_time_offer_button_after_offer()
             
+            # TIMEZONE SUPPORT: Embed mit Timezone-formatierter Zeit
+            formatted_time = TimezoneHelper.format_time_with_timezone(time_str, self.bot)
+            timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
             
             embed = discord.Embed(
                 title="🕒 Match Time Offer",
@@ -64,8 +80,11 @@ class TimeOfferModal(discord.ui.Modal):
             
             embed.add_field(name="🏆 Match", value=f"{self.match_data['team1_name']} vs {self.match_data['team2_name']}", inline=False)
             embed.add_field(name="📅 Date", value=self.match_data.get('match_date', 'TBA'), inline=True)
-            embed.add_field(name="🕒 Proposed Time", value=f"**{time_str}**", inline=True)
+            embed.add_field(name="🕒 Proposed Time", value=f"**{formatted_time}**", inline=True)
             embed.add_field(name="🗺️ Map", value=self.match_data.get('map_name', 'TBA'), inline=True)
+            
+            # TIMEZONE SUPPORT: Timezone-Warnung hinzufügen
+            embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
          
             view = TimeOfferView(self.bot, self.match_id, self.match_data, time_str, offering_team_name, other_team_name, other_team_role_id)
             
@@ -80,9 +99,9 @@ class TimeOfferModal(discord.ui.Modal):
             
             
             view.message = actual_message
-            view.message_id = actual_message.id  
-            view.channel_id = actual_message.channel.id  
-            view.guild_id = actual_message.guild.id  
+            view.message_id = actual_message.id
+            view.channel_id = actual_message.channel.id
+            view.guild_id = actual_message.guild.id
             
             
             try:
@@ -147,10 +166,10 @@ class TimeOfferModal(discord.ui.Modal):
             if self.supersede_view:
                 await self._disable_superseded_view()
             
-            logger.info(f"✅ Time offer {time_str} from {offering_team_name} for match {self.match_id} WITH REAL TEAM NAMES")
+            logger.info(f"✅ TIMEZONE: Time offer {time_str} from {offering_team_name} for match {self.match_id} WITH TIMEZONE SUPPORT")
             
         except Exception as e:
-            logger.error(f"Error in time offer submission with REAL team names: {e}")
+            logger.error(f"Error in time offer submission with TIMEZONE support: {e}")
             try:
                 if not interaction.response.is_done():
                     await interaction.response.send_message("❌ Error processing time offer!", ephemeral=True)
@@ -431,16 +450,23 @@ class TimeOfferView(discord.ui.View):
             
             self.bot.db.update_match_time(self.match_id, self.offered_time)
             
+            # TIMEZONE SUPPORT: Zeit mit Timezone formatieren
+            formatted_time = TimezoneHelper.format_time_with_timezone(self.offered_time, self.bot)
+            timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
+            
             
             embed = discord.Embed(
                 title="✅ Match Time Confirmed!",
-                description=f"Both teams have agreed on the match time: **{self.offered_time}**",
+                description=f"Both teams have agreed on the match time: **{formatted_time}**",
                 color=discord.Color.green()
             )
             embed.add_field(name="🏆 Match", value=f"{self.match_data['team1_name']} vs {self.match_data['team2_name']}", inline=False)
             embed.add_field(name="📅 Date", value=self.match_data.get('match_date', 'TBA'), inline=True)
-            embed.add_field(name="🕒 Time", value=self.offered_time, inline=True)
+            embed.add_field(name="🕒 Time", value=formatted_time, inline=True)
             embed.add_field(name="🗺️ Map", value=self.match_data.get('map_name', 'TBA'), inline=True)
+            
+            # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+            embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
             embed.set_footer(text="Time accepted")
             
             
@@ -503,10 +529,10 @@ class TimeOfferView(discord.ui.View):
             if message:
                 self.bot.db.complete_ongoing_interaction(message.id)
             
-            logger.info(f"✅ Time {self.offered_time} accepted for match {self.match_id} - ONLY TIME FIELD UPDATED")
+            logger.info(f"✅ TIMEZONE: Time {self.offered_time} accepted for match {self.match_id} WITH TIMEZONE DISPLAY")
 
         except Exception as e:
-            logger.error(f"Error accepting time with field-only update: {e}")
+            logger.error(f"Error accepting time with TIMEZONE support: {e}")
             try:
                 if not interaction.response.is_done():
                     await interaction.response.send_message("❌ Error accepting time!", ephemeral=True)
@@ -569,14 +595,21 @@ class TimeOfferView(discord.ui.View):
                 team2_role = interaction.guild.get_role(team2_role_id)
                 
                 if team1_role and team2_role:
+                    # TIMEZONE SUPPORT: Zeit mit Timezone formatieren
+                    formatted_time = TimezoneHelper.format_time_with_timezone(self.offered_time, self.bot)
+                    timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
+                    
                     confirmation_embed = discord.Embed(
                         title="✅ Match Time Confirmed!",
-                        description=f"Both teams have agreed on **{self.offered_time}**",
+                        description=f"Both teams have agreed on **{formatted_time}**",
                         color=discord.Color.green()
                     )
                     confirmation_embed.add_field(name="📅 Date", value=self.match_data.get('match_date', 'TBA'), inline=True)
-                    confirmation_embed.add_field(name="🕒 Time", value=self.offered_time, inline=True)
+                    confirmation_embed.add_field(name="🕒 Time", value=formatted_time, inline=True)
                     confirmation_embed.add_field(name="🗺️ Map", value=self.match_data.get('map_name', 'TBA'), inline=True)
+                    
+                    # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+                    confirmation_embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
                  
                     await interaction.followup.send(
                         f"🕒 {team1_role.mention} {team2_role.mention} **Match time confirmed!**", 
@@ -625,17 +658,19 @@ class TimeOfferView(discord.ui.View):
                         view = self._create_view_preserving_button_states(existing_view_data)
                         
                         
+                        # TIMEZONE SUPPORT: Zeit mit Timezone formatieren
+                        formatted_time = TimezoneHelper.format_time_with_timezone(self.offered_time, self.bot)
                         view.time_offer_button.disabled = True
-                        view.time_offer_button.label = f"✅ Time Set: {self.offered_time}"
+                        view.time_offer_button.label = f"✅ Time Set: {formatted_time}"
                         view.time_offer_button.style = discord.ButtonStyle.success
                         
                         
-                        self._update_only_time_field_in_embed(embed, self.offered_time)
+                        self._update_only_time_field_in_embed(embed, formatted_time)
                         
                         
                         for i, field in enumerate(embed.fields):
                             if "Status" in field.name:
-                                embed.set_field_at(i, name=field.name, value=f"⏳ Scheduled for {self.offered_time} - Waiting for results", inline=field.inline)
+                                embed.set_field_at(i, name=field.name, value=f"⏳ Scheduled for {formatted_time} - Waiting for results", inline=field.inline)
                                 break
                         
                         
@@ -644,7 +679,7 @@ class TimeOfferView(discord.ui.View):
                         
                         await message.edit(embed=embed, view=view)
                         
-                        logger.info(f"✅ ONLY time field updated in private embed for match {self.match_id}")
+                        logger.info(f"✅ TIMEZONE: ONLY time field updated in private embed for match {self.match_id}")
                         break
             
         except Exception as e:
@@ -747,11 +782,9 @@ class TimeOfferView(discord.ui.View):
     
     async def _update_only_time_field_in_public_embed(self):
         """
-        FIXED: Update time field in separate public match channel
+        TIMEZONE SUPPORT: Update time field in separate public match channel
         """
         try:
-            # ALTE LOGIK ENTFERNT - verwendet separate channel approach
-            
             # Channel ID für dieses Match aus Datenbank holen
             stored_channel_id = self.bot.db.get_setting(f'public_match_{self.match_id}_channel_id')
             if not stored_channel_id:
@@ -796,14 +829,17 @@ class TimeOfferView(discord.ui.View):
                 if message.embeds:
                     embed = message.embeds[0]
                     
+                    # TIMEZONE SUPPORT: Zeit mit Timezone formatieren
+                    formatted_time = TimezoneHelper.format_time_with_timezone(self.offered_time, self.bot)
+                    
                     # Nur time field aktualisieren
                     for i, field in enumerate(embed.fields):
                         if "Match Time" in field.name or "🕒" in field.name:
-                            embed.set_field_at(i, name=field.name, value=self.offered_time, inline=field.inline)
+                            embed.set_field_at(i, name=field.name, value=formatted_time, inline=field.inline)
                             break
                     
                     await message.edit(embed=embed)
-                    logger.info(f"✅ ONLY time field updated in public embed for match {self.match_id}")
+                    logger.info(f"✅ TIMEZONE: ONLY time field updated in public embed for match {self.match_id}")
                     
             except discord.NotFound:
                 logger.warning(f"Public message {public_message_id} not found for match {self.match_id}")
@@ -835,15 +871,18 @@ class TimeOfferView(discord.ui.View):
                         if message.embeds:
                             embed = message.embeds[0]
                             
+                            # TIMEZONE SUPPORT: Zeit mit Timezone formatieren
+                            formatted_time = TimezoneHelper.format_time_with_timezone(self.offered_time, self.bot)
+                            
                             
                             for i, field in enumerate(embed.fields):
                                 if "Match Time" in field.name or "🕒" in field.name:
-                                    embed.set_field_at(i, name=field.name, value=self.offered_time, inline=field.inline)
+                                    embed.set_field_at(i, name=field.name, value=formatted_time, inline=field.inline)
                                     break
                             
                             
                             await message.edit(embed=embed)
-                            logger.info(f"✅ ONLY time field updated in streamer embed for match {self.match_id}")
+                            logger.info(f"✅ TIMEZONE: ONLY time field updated in streamer embed for match {self.match_id}")
                         return
                         
                     except discord.NotFound:
@@ -884,6 +923,10 @@ class TimeOfferView(discord.ui.View):
             if not streamer_user:
                 return
             
+            # TIMEZONE SUPPORT: Zeit mit Timezone formatieren
+            formatted_time = TimezoneHelper.format_time_with_timezone(self.offered_time, self.bot)
+            timezone_warning = TimezoneHelper.get_timezone_warning_text(self.bot)
+            
             
             embed = discord.Embed(
                 title="🕒 Match Time Set!",
@@ -892,12 +935,15 @@ class TimeOfferView(discord.ui.View):
             )
             embed.add_field(name="🏆 Match", value=f"{self.match_data['team1_name']} vs {self.match_data['team2_name']}", inline=False)
             embed.add_field(name="📅 Date", value=self.match_data.get('match_date', 'TBA'), inline=True)
-            embed.add_field(name="🕒 Time", value=self.offered_time, inline=True)
+            embed.add_field(name="🕒 Time", value=formatted_time, inline=True)
             embed.add_field(name="🗺️ Map", value=self.match_data.get('map_name', 'TBA'), inline=True)
+            
+            # TIMEZONE SUPPORT: Timezone-Info hinzufügen
+            embed.add_field(name="⏰ Timezone Info", value=timezone_warning, inline=False)
    
             await streamer_notification_channel.send(f"{streamer_user.mention}", embed=embed, delete_after=60)
             
-            logger.info(f"Streamer {streamer_user} notified about match time {self.offered_time} in notification channel")
+            logger.info(f"TIMEZONE: Streamer {streamer_user} notified about match time {formatted_time} in notification channel")
             
         except Exception as e:
             logger.error(f"Error notifying streamer: {e}")
@@ -908,13 +954,16 @@ class TimeOfferView(discord.ui.View):
             for item in self.children:
                 item.disabled = True
             
+            # TIMEZONE SUPPORT: Zeit mit Timezone formatieren für Timeout-Message
+            formatted_time = TimezoneHelper.format_time_with_timezone(self.offered_time, self.bot)
+            
             
             embed = discord.Embed(
                 title="⏰ Time Offer Expired",
-                description=f"The time offer for **{self.offered_time}** has expired.",
+                description=f"The time offer for **{formatted_time}** has expired.",
                 color=discord.Color.orange()
             )
-            embed.add_field(name="🕒 Expired Offer", value=self.offered_time, inline=True)
+            embed.add_field(name="🕒 Expired Offer", value=formatted_time, inline=True)
             embed.add_field(name="👥 Offered by", value=self.offering_team, inline=True)  
             embed.add_field(name="ℹ️ Status", value="Expired - can be resubmitted", inline=True)
             
